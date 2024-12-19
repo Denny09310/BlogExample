@@ -3,55 +3,65 @@
 
 <PageTitle>Blog App | Home</PageTitle>
 
-<h1 class="mb-4">Posts</h1>
+<div class="p-4">
+    <h1 class="mb-4">Posts</h1>
 
-<div class="mb-4">
-    <label for="order-select" class="form-label">Order by:</label>
-    <select id="order-select" class="form-select" @onchange="OnOrderChange">
-        <option value="@nameof(Post.CreatedAt)">Date</option>
-        <option value="@nameof(Post.Title)">Title</option>
-    </select>
-</div>
+    <div class="mb-4">
+        <label for="search-input" class="form-label">Search:</label>
+        <input id="search-input" class="form-control" @onchange="OnSearchChange" />
+    </div>
 
-<div class="mb-4">
-    <button class="btn btn-primary" @onclick="PreviousPage" disabled="@IsFirstPage">Previous</button>
-    <button class="btn btn-primary" @onclick="NextPage" disabled="@IsLastPage">Next</button>
-</div>
+    <div class="mb-4">
+        <label for="order-select" class="form-label">Order by:</label>
+        <select id="order-select" class="form-select" @onchange="OnOrderChange">
+            <option value="@nameof(Post.CreatedAt)">Date</option>
+            <option value="@nameof(Post.Title)">Title</option>
+        </select>
+    </div>
 
-<LoadingView @ref="_loading" ProvideData="ProvideDataAsync">
-    <LoadingContent>
-        <div class="loading-spinner"></div>
-    </LoadingContent>
-    <ErrorContent>
-        <div class="alert alert-danger" role="alert">
-            <h4 class="alert-heading">Error!</h4>
-            <p>@context.Message</p>
-        </div>
-    </ErrorContent>
-    <ChildContent Context="posts">
-        @foreach (var post in posts)
-        {
-            <div @key="post.Id" class="card mb-3">
-                <div class="card-body">
-                    <h3 class="card-title">
-                        <a href="/post/@post.Id" class="text-decoration-none">@post.Title</a>
-                    </h3>
-                    <p class="card-text text-truncate">
-                        @(Markdown.ToPlainText(post.Content))
-                    </p>
-                </div>
+    <div class="mb-4">
+        <button class="btn btn-primary" @onclick="PreviousPage" disabled="@IsFirstPage">Previous</button>
+        <button class="btn btn-primary" @onclick="NextPage" disabled="@IsLastPage">Next</button>
+    </div>
+
+    <LoadingView @ref="_loading" ProvideData="ProvideDataAsync">
+        <LoadingContent>
+            <div class="loading-spinner"></div>
+        </LoadingContent>
+        <ErrorContent>
+            <div class="alert alert-danger" role="alert">
+                <h4 class="alert-heading">Error!</h4>
+                <p>@context.Message</p>
             </div>
-        }
-    </ChildContent>
-</LoadingView>
+        </ErrorContent>
+        <ChildContent Context="posts">
+            @foreach (var post in posts)
+            {
+                <div @key="post.Id" class="card mb-3">
+                    <div class="card-body">
+                        <h3 class="card-title">
+                            <a href="/post/@post.Id" class="text-decoration-none">@post.Title</a>
+                        </h3>
+                        <p class="card-text text-truncate">
+                            @(Markdown.ToPlainText(post.Content))
+                        </p>
+                    </div>
+                </div>
+            }
+        </ChildContent>
+    </LoadingView>
+</div>
 
 @code 
 {
     private const int PAGE_SIZE = 25;
+    private const string BASE_FILTER = "Title.ToLower().Contains(\"{0}\".ToLower()) || Content.ToLower().Contains(\"{0}\".ToLower())";
 
     private LoadingView<List<Post>>? _loading;
     private string _order = nameof(Post.CreatedAt);
+    private string? _search;
     private int _page = 0;
+
 
     private bool IsFirstPage => _page == 0;
     private bool IsLastPage => Posts.Count < PAGE_SIZE;
@@ -59,7 +69,14 @@
 
     private async Task<List<Post>> ProvideDataAsync()
     {
-        var response = await Api.GetPosts(PAGE_SIZE, _page * PAGE_SIZE, order: _order);
+        string? filter = null!;
+
+        if (!string.IsNullOrWhiteSpace(_search))
+        {
+            filter = string.Format(BASE_FILTER, _search);
+        }
+
+        var response = await Api.GetPosts(PAGE_SIZE, _page * PAGE_SIZE, filter, _order);
         if (!response.IsSuccessful)
         {
             throw new Exception("Unable to load posts", response.Error);
@@ -72,6 +89,15 @@
         if (e.Value is string order)
         {
             _order = order;
+            await RefreshAsync();
+        }
+    }
+
+    private async Task OnSearchChange(ChangeEventArgs e)
+    {
+        if (e.Value is string search)
+        {
+            _search = search;
             await RefreshAsync();
         }
     }
