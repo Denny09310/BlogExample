@@ -1,0 +1,52 @@
+﻿@typeparam T
+
+<div class="mb-4">
+    <button class="btn btn-primary" @onclick="PreviousPage" disabled="@IsFirstPage">Previous</button>
+    <button class="btn btn-primary" @onclick="NextPage" disabled="@IsLastPage">Next</button>
+</div>
+
+@code
+{
+    [Parameter, EditorRequired] 
+    public IList<T> Items { get; set; } = default!;
+
+    [Parameter]
+    public int Page { get; set; }
+
+    [Parameter]
+    public EventCallback<int> PageChanged { get; set; }
+
+    [Parameter] 
+    public int PageSize { get; set; } = 25;
+
+    [Parameter]
+    public EventCallback OnPrevious { get; set; }
+
+    [Parameter]
+    public EventCallback OnNext { get; set; }
+
+    private bool IsFirstPage => Page == 0;
+    private bool IsLastPage => Items.Count < PageSize;
+
+    private async Task PreviousPage()
+    {
+        if (!IsFirstPage)
+        {
+            Page--;
+
+            await PageChanged.InvokeAsync(Page);
+            await OnPrevious.InvokeAsync();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (!IsLastPage)
+        {
+            Page++;
+
+            await PageChanged.InvokeAsync(Page);
+            await OnNext.InvokeAsync();
+        }
+    }
+}

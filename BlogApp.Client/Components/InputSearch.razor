@@ -1,0 +1,13 @@
+﻿<div class="mb-4">
+    <label for="search-input" class="form-label">Search:</label>
+    <input @bind-value:get="Search" @bind-value:set="SearchChanged.InvokeAsync" id="search-input" class="form-control" />
+</div>
+
+@code
+{
+    [Parameter]
+    public string? Search { get; set; }
+
+    [Parameter]
+    public EventCallback<string> SearchChanged { get; set; }
+}

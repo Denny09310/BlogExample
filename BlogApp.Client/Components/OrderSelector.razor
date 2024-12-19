@@ -1,0 +1,16 @@
+﻿<div class="mb-4">
+    <label for="order-select" class="form-label">Order by:</label>
+    <select @bind="Order" @bind:after="@(() => OrderChanged.InvokeAsync(Order))" id="order-select" class="form-select">
+        <option value="@nameof(Post.CreatedAt)">Date</option>
+        <option value="@nameof(Post.Title)">Title</option>
+    </select>
+</div>
+
+@code
+{
+    [Parameter]
+    public string? Order { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OrderChanged { get; set; }
+}

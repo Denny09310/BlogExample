@@ -6,23 +6,9 @@
 <div class="p-4">
     <h1 class="mb-4">Posts</h1>
 
-    <div class="mb-4">
-        <label for="search-input" class="form-label">Search:</label>
-        <input id="search-input" class="form-control" @onchange="OnSearchChange" />
-    </div>
-
-    <div class="mb-4">
-        <label for="order-select" class="form-label">Order by:</label>
-        <select id="order-select" class="form-select" @onchange="OnOrderChange">
-            <option value="@nameof(Post.CreatedAt)">Date</option>
-            <option value="@nameof(Post.Title)">Title</option>
-        </select>
-    </div>
-
-    <div class="mb-4">
-        <button class="btn btn-primary" @onclick="PreviousPage" disabled="@IsFirstPage">Previous</button>
-        <button class="btn btn-primary" @onclick="NextPage" disabled="@IsLastPage">Next</button>
-    </div>
+    <InputSearch @bind-Search="Search" @bind-Search:after="RefreshAsync" />
+    <OrderSelector @bind-Order="Order" @bind-Order:after="RefreshAsync" />
+    <Pagination @bind-Page="Page" @bind-Page:after="RefreshAsync" Items="Posts" PageSize="@PAGE_SIZE" />
 
     <LoadingView @ref="_loading" ProvideData="ProvideDataAsync">
         <LoadingContent>
@@ -37,16 +23,7 @@
         <ChildContent Context="posts">
             @foreach (var post in posts)
             {
-                <div @key="post.Id" class="card mb-3">
-                    <div class="card-body">
-                        <h3 class="card-title">
-                            <a href="/post/@post.Id" class="text-decoration-none">@post.Title</a>
-                        </h3>
-                        <p class="card-text text-truncate">
-                            @(Markdown.ToPlainText(post.Content))
-                        </p>
-                    </div>
-                </div>
+                <PostCard @key="post.Id"  Post="@post" />
             }
         </ChildContent>
     </LoadingView>
@@ -58,66 +35,25 @@
     private const string BASE_FILTER = "Title.ToLower().Contains(\"{0}\".ToLower()) || Content.ToLower().Contains(\"{0}\".ToLower())";
 
     private LoadingView<List<Post>>? _loading;
-    private string _order = nameof(Post.CreatedAt);
-    private string? _search;
-    private int _page = 0;
 
+    private int Page { get; set; }
+    private string? Search { get; set; }
+    private string Order { get; set; } = nameof(Post.CreatedAt);
 
-    private bool IsFirstPage => _page == 0;
-    private bool IsLastPage => Posts.Count < PAGE_SIZE;
     private List<Post> Posts => _loading?.Data ?? new List<Post>();
 
     private async Task<List<Post>> ProvideDataAsync()
     {
-        string? filter = null!;
+        var filter = !string.IsNullOrWhiteSpace(Search)
+            ? string.Format(BASE_FILTER, Search)
+            : null;
 
-        if (!string.IsNullOrWhiteSpace(_search))
-        {
-            filter = string.Format(BASE_FILTER, _search);
-        }
-
-        var response = await Api.GetPosts(PAGE_SIZE, _page * PAGE_SIZE, filter, _order);
+        var response = await Api.GetPosts(PAGE_SIZE, Page * PAGE_SIZE, filter, Order);
         if (!response.IsSuccessful)
         {
             throw new Exception("Unable to load posts", response.Error);
         }
         return Mapper.Map(response.Content.Posts);
-    }
-
-    private async Task OnOrderChange(ChangeEventArgs e)
-    {
-        if (e.Value is string order)
-        {
-            _order = order;
-            await RefreshAsync();
-        }
-    }
-
-    private async Task OnSearchChange(ChangeEventArgs e)
-    {
-        if (e.Value is string search)
-        {
-            _search = search;
-            await RefreshAsync();
-        }
-    }
-
-    private async Task PreviousPage()
-    {
-        if (!IsFirstPage)
-        {
-            _page--;
-            await RefreshAsync();
-        }
-    }
-
-    private async Task NextPage()
-    {
-        if (!IsLastPage)
-        {
-            _page++;
-            await RefreshAsync();
-        }
     }
 
     private async Task RefreshAsync()
