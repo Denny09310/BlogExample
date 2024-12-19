@@ -1,5 +1,4 @@
 ﻿@page "/"
-@using Markdig
 @inject IApiClient Api
 
 <PageTitle>Blog App | Home</PageTitle>
@@ -7,59 +6,65 @@
 <h1 class="mb-4">Posts</h1>
 
 <div class="mb-4">
-    <label for="orderSelect" class="form-label">Ordina per:</label>
-    <select id="orderSelect" class="form-select" @onchange="OnOrderChange">
+    <label for="order-select" class="form-label">Order by:</label>
+    <select id="order-select" class="form-select" @onchange="OnOrderChange">
         <option value="@nameof(Post.CreatedAt)">Date</option>
         <option value="@nameof(Post.Title)">Title</option>
     </select>
 </div>
 
+<div class="mb-4">
+    <button class="btn btn-primary" @onclick="PreviousPage" disabled="@IsFirstPage">Previous</button>
+    <button class="btn btn-primary" @onclick="NextPage" disabled="@IsLastPage">Next</button>
+</div>
+
 <LoadingView @ref="_loading" ProvideData="ProvideDataAsync">
     <LoadingContent>
-        <div class="d-flex justify-content-center align-items-center" style="height: 100px;">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-        </div>
+        <div class="loading-spinner"></div>
     </LoadingContent>
     <ErrorContent>
         <div class="alert alert-danger" role="alert">
-            <h4 class="alert-heading">Errore!</h4>
+            <h4 class="alert-heading">Error!</h4>
             <p>@context.Message</p>
         </div>
     </ErrorContent>
-    <ChildContent>
-        <div class="p-4">
-            @foreach (var post in context)
-            {
-                <div @key="post.Id" class="card mb-3">
-                    <div class="card-body">
-                        <h3 class="card-title">
-                            <a href="/post/@post.Id" class="text-decoration-none">@post.Title</a>
-                        </h3>
-                        <p class="card-text" style="overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">@(Markdown.ToPlainText(post.Content))</p>
-                    </div>
+    <ChildContent Context="posts">
+        @foreach (var post in posts)
+        {
+            <div @key="post.Id" class="card mb-3">
+                <div class="card-body">
+                    <h3 class="card-title">
+                        <a href="/post/@post.Id" class="text-decoration-none">@post.Title</a>
+                    </h3>
+                    <p class="card-text text-truncate">
+                        @(Markdown.ToPlainText(post.Content))
+                    </p>
                 </div>
-            }
-        </div>
+            </div>
+        }
     </ChildContent>
 </LoadingView>
 
-@code
+@code 
 {
-    private LoadingView<List<Post>> _loading = default!;
+    private const int PAGE_SIZE = 1;
 
+    private LoadingView<List<Post>>? _loading;
     private string _order = nameof(Post.CreatedAt);
+    private int _page = 0;
+
+    private bool IsFirstPage => _page == 0;
+    private bool IsLastPage => Posts.Count < PAGE_SIZE;
+    private List<Post> Posts => _loading?.Data ?? new List<Post>();
 
     private async Task<List<Post>> ProvideDataAsync()
     {
-        using var response = await Api.GetPosts(100, 0, order: _order);
-        if (response.IsSuccessful)
+        var response = await Api.GetPosts(PAGE_SIZE, _page * PAGE_SIZE, order: _order);
+        if (!response.IsSuccessful)
         {
-            return Mapper.Map(response.Content.Posts);
+            throw new Exception("Unable to load posts", response.Error);
         }
-
-        throw new Exception("Unable to load posts", response.Error);
+        return Mapper.Map(response.Content.Posts);
     }
 
     private async Task OnOrderChange(ChangeEventArgs e)
@@ -67,6 +72,32 @@
         if (e.Value is string order)
         {
             _order = order;
+            await RefreshAsync();
+        }
+    }
+
+    private async Task PreviousPage()
+    {
+        if (!IsFirstPage)
+        {
+            _page--;
+            await RefreshAsync();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (!IsLastPage)
+        {
+            _page++;
+            await RefreshAsync();
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (_loading != null)
+        {
             await _loading.RefreshAsync();
         }
     }

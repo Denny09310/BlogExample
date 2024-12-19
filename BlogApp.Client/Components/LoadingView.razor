@@ -28,6 +28,10 @@ else if (ChildContent != null)
     {
         @ChildContent(Data)
     }
+    else if (EmptyContent != null)
+    {
+        @EmptyContent
+    }
     else
     {
         <p>No data available.</p>
@@ -39,11 +43,13 @@ else if (ChildContent != null)
     [Parameter] public RenderFragment? LoadingContent { get; set; }
     [Parameter] public RenderFragment<Exception>? ErrorContent { get; set; }
     [Parameter] public RenderFragment<T>? ChildContent { get; set; }
+    [Parameter] public RenderFragment<T>? EmptyContent { get; set; }
     [Parameter] public Func<Task<T>> ProvideData { get; set; } = default!;
 
     private bool IsLoading { get; set; } = true;
-    private T? Data { get; set; }
     private Exception? Error { get; set; }
+
+    public T? Data { get; set; }
 
     public Task RefreshAsync() => ProvideDataAsync();
 
