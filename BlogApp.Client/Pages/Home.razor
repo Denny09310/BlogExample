@@ -1,0 +1,73 @@
+﻿@page "/"
+@using Markdig
+@inject IApiClient Api
+
+<PageTitle>Blog App | Home</PageTitle>
+
+<h1 class="mb-4">Posts</h1>
+
+<div class="mb-4">
+    <label for="orderSelect" class="form-label">Ordina per:</label>
+    <select id="orderSelect" class="form-select" @onchange="OnOrderChange">
+        <option value="@nameof(Post.CreatedAt)">Date</option>
+        <option value="@nameof(Post.Title)">Title</option>
+    </select>
+</div>
+
+<LoadingView @ref="_loading" ProvideData="ProvideDataAsync">
+    <LoadingContent>
+        <div class="d-flex justify-content-center align-items-center" style="height: 100px;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    </LoadingContent>
+    <ErrorContent>
+        <div class="alert alert-danger" role="alert">
+            <h4 class="alert-heading">Errore!</h4>
+            <p>@context.Message</p>
+        </div>
+    </ErrorContent>
+    <ChildContent>
+        <div class="p-4">
+            @foreach (var post in context)
+            {
+                <div @key="post.Id" class="card mb-3">
+                    <div class="card-body">
+                        <h3 class="card-title">
+                            <a href="/post/@post.Id" class="text-decoration-none">@post.Title</a>
+                        </h3>
+                        <p class="card-text" style="overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">@(Markdown.ToPlainText(post.Content))</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </ChildContent>
+</LoadingView>
+
+@code
+{
+    private LoadingView<List<Post>> _loading = default!;
+
+    private string _order = nameof(Post.CreatedAt);
+
+    private async Task<List<Post>> ProvideDataAsync()
+    {
+        using var response = await Api.GetPosts(100, 0, order: _order);
+        if (response.IsSuccessful)
+        {
+            return Mapper.Map(response.Content.Posts);
+        }
+
+        throw new Exception("Unable to load posts", response.Error);
+    }
+
+    private async Task OnOrderChange(ChangeEventArgs e)
+    {
+        if (e.Value is string order)
+        {
+            _order = order;
+            await _loading.RefreshAsync();
+        }
+    }
+}
