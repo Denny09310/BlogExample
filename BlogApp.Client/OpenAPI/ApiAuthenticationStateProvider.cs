@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Components.Authorization;
 using System.Security.Claims;
 
-namespace BlogApp.Client.OpenAPI;
+namespace BlogApp.Client;
 
 public class ApiAuthenticationStateProvider : AuthenticationStateProvider
 {

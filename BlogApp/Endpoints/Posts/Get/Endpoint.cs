@@ -22,16 +22,12 @@ internal sealed class Endpoint(ApplicationDbContext db) : Endpoint<Request, Resp
 
     public override async Task HandleAsync(Request r, CancellationToken ct)
     {
-        IQueryable<Post> query = _db.Posts.Include(x => x.User);
+        IQueryable<Post> query = _db.Posts.Include(x => x.User)
+            .OrderBy(r.Order);
 
         if (!string.IsNullOrWhiteSpace(r.Filter))
         {
             query = query.Where(r.Filter);
-        }
-
-        if (!string.IsNullOrWhiteSpace(r.Order))
-        {
-            query = query.OrderBy(r.Order);
         }
 
         var posts = await query
@@ -47,9 +43,9 @@ internal sealed class Endpoint(ApplicationDbContext db) : Endpoint<Request, Resp
 internal sealed class Request
 {
     public string? Filter { get; set; }
-    public string? Order { get; set; }
     public int Limit { get; set; }
     public int Offset { get; set; }
+    public string Order { get; set; } = nameof(Post.CreatedAt);
 }
 
 internal sealed class Response
